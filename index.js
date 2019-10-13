@@ -1,10 +1,10 @@
 const Alexa = require('ask-sdk-core');
-//var https = require('https');
-
+var http = require('http');
 var documentJSON = require('./aplJSON.json').document;
-var response = require('./dataset'+ Math.floor(Math.random() * 4)   +'.json');
+var datasourcesJSON = require('./aplJSON.json').datasources;
+var buildingAPL = require('./buildingAPL');
 
-console.log(response[0]);
+var response;
 
 function supportsAPL(handlerInput){
     const supportedInterfaces =
@@ -23,13 +23,14 @@ const LaunchRequestHandler = {
   },
 
   handle(handlerInput) {
-      
+     //var datasourcesJSON = datasourcesJSON1();
+     
      if (supportsAPL(handlerInput)){
             handlerInput.responseBuilder
                 .addDirective({
                     type: 'Alexa.Presentation.APL.RenderDocument',
                     document: documentJSON,
-                    datasources: datasourcesJSON1()
+                    datasources: datasourcesJSON
                 });
       }
       
@@ -39,30 +40,27 @@ const LaunchRequestHandler = {
       .getResponse();
   },
 };
-
 /* END Launch Request Handler*/
 
-// Get Crash Handler
+/* Get Crash Handler */
 const GetCrashHandler = {
   canHandle(handlerInput) {
     const request = handlerInput.requestEnvelope.request;
     return request.type === 'IntentRequest'
       && request.intent.name === 'GetNewFactIntent';
   },                             
-
   async handle(handlerInput) {
-    //const response = await httpGet();
-    var value = 0;
-    
     do{
-      value = Math.floor(Math.random() * response.length);
-      // console.log(response.length);
-    }while((response[value].date === undefined) || 
-           (response[value].summary === undefined) || 
-           (response[value].location === undefined) || 
-           (response[value].type === undefined));
+      response = await httpGet();
+      console.log(response);
+    }while((response.date === undefined) || 
+           (response.summary === undefined) || 
+           (response.location === undefined) || 
+           (response.type === undefined));
     
-    const date = getDate(response[value].date) ;
+    var fileAPL = buildingAPL.datasourcesJSON(response.summary);
+    
+    const date = getDate(response.date) ;
     const year = date.getFullYear();
     const month = date.getMonth() + 1;
     const day = date.getDate();
@@ -72,63 +70,26 @@ const GetCrashHandler = {
                         "April", "May", "June",
                         "July", "August", "September", 
                         "October", "November", "December"];
+     if (supportsAPL(handlerInput)){
+        handlerInput.responseBuilder
+            .addDirective({
+                type: 'Alexa.Presentation.APL.RenderDocument',
+                document: fileAPL.document,
+                datasources: fileAPL.datasources
+            });
+      }
 
     return handlerInput.responseBuilder
             .speak("Okay. Here is what I got back from my request. " + day + " "
                       + monthNames[month - 1] + " " 
                       + year + "<break time='1s'/>" + " "
-                      + response[value].location + "<break time='1s'/>" + " " 
-                      + response[value].type + "<break time='1s'/>" + " " 
-                      + response[value].summary)
-            .reprompt("What would you like?")
+                      + response.location + "<break time='1s'/>" + " " 
+                      + response.type + "<break time='1s'/>" + " " 
+                      + response.summary)
             .getResponse();
   },
 };
 /* END Get Crash Handler */
-
-
-const GetTodayCrashHandler = {
-  canHandle(handlerInput) {
-    const request = handlerInput.requestEnvelope.request;
-    return request.type === 'IntentRequest'
-      && request.intent.name === 'GetTodayIntent';
-  },
-  async handle(handlerInput) {
-    var todays = new Date();
-    //const response = await httpGet();
-    
-    var value, date, month, day = 0;
-    
-    const month1 = todays.getMonth() + 1;
-    const day1 = todays.getDate();
-    
-    if(response.includes(day1) && response.includes(month1)){
-      do{
-        try{
-          date = getDate(response[value].date);
-          month = date.getMonth();
-          day = date.getDay();
-        }catch(err){}
-          value++;
-      }while(day1 !== day && month1 !== month);
-    
-      value--;
-      
-      return handlerInput.responseBuilder
-              .speak("Okay. Fact of today. " + 
-                     response[value].location + "<break time='1s'/>" + " " + 
-                     response[value].type + "<break time='1s'/>" + " " + 
-                     response[value].summary)
-              .reprompt("What would you like?")
-              .getResponse();
-    }else{
-      return handlerInput.responseBuilder
-        .speak("Today no airplane crash happened " + "<break time='1s'/>" + "fortunately")
-        .reprompt("What would you like?")
-        .getResponse();
-    }
-  },
-};
 
 const HelpIntentHandler = {
   canHandle(handlerInput) {
@@ -179,7 +140,6 @@ const STOP_MESSAGE = 'Goodbye!';
 exports.handler = Alexa.SkillBuilders.custom()
     .addRequestHandlers(
         LaunchRequestHandler,
-        GetTodayCrashHandler,
         HelpIntentHandler,
         GetCrashHandler,
         SessionEndedRequestHandler,
@@ -196,16 +156,16 @@ function getDate(date){
   return d;
 }
 
-/*function httpGet(host, path) {
+function httpGet() {
   return new Promise(((resolve, reject) => {
     var options = {
-        host: host,
-        port: 443,
-        path: path,
-        method: 'GET',
-    };
+        host: 'alexaskilldb.altervista.org',
+        port: 80,
+        path: '/datasetSelect.php',
+        method: 'POST',
+  };
 
-const request = https.request(options, (response) => {
+const request = http.request(options, (response) => {
       response.setEncoding('utf8');
       let returnData = '';
 
@@ -223,75 +183,6 @@ const request = https.request(options, (response) => {
     });
     request.end();
   }));
-}*/
-
-//no polimorfismo...credo
-
-function datasourcesJSON1(){
-    return  {
-        "datasources": {
-            "bodyTemplate1Data": {
-                "type": "object",
-                "objectId": "bt1Sample",
-                "backgroundImage": {
-                    "contentDescription": null,
-                    "smallSourceUrl": null,
-                    "largeSourceUrl": null,
-                    "sources": [
-                        {
-                            "url": "https://www.nasa.gov/sites/default/files/images/304128main_EC84-31806_full.jpg",
-                            "size": "small",
-                            "widthPixels": 0,
-                            "heightPixels": 0
-                        },
-                        {
-                            "url": "https://www.nasa.gov/sites/default/files/images/304128main_EC84-31806_full.jpg",
-                            "size": "large",
-                            "widthPixels": 0,
-                            "heightPixels": 0
-                        }
-                    ]
-                }
-            }
-        }
-    };
 }
 
 
-
-function datasourcesJSON2(text){
-    return  {
-        "datasources": {
-            "bodyTemplate1Data": {
-                "type": "object",
-                "objectId": "bt1Sample",
-                "backgroundImage": {
-                    "contentDescription": null,
-                    "smallSourceUrl": null,
-                    "largeSourceUrl": null,
-                    "sources": [
-                        {
-                            "url": "https://www.nasa.gov/sites/default/files/images/304128main_EC84-31806_full.jpg",
-                            "size": "small",
-                            "widthPixels": 0,
-                            "heightPixels": 0
-                        },
-                        {
-                            "url": "https://www.nasa.gov/sites/default/files/images/304128main_EC84-31806_full.jpg",
-                            "size": "large",
-                            "widthPixels": 0,
-                            "heightPixels": 0
-                        }
-                    ]
-                },
-                "textContent": {
-                    "primaryText": {
-                        "type": "PlainText",
-                        "text" : text
-                    }
-                }
-            }
-        }
-    };
-}
- 
