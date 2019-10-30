@@ -35,7 +35,7 @@ const LaunchRequestHandler = {
       }
       
     return handlerInput.responseBuilder
-      .speak("Welcome to Airplane crash")
+      .speak("Welcome to Airplane crash, you can say tell me a fact or Help. Which would you like to try?")
       .reprompt("What would you like?")
       .getResponse();
   },
@@ -117,6 +117,20 @@ const SessionEndedRequestHandler = {
   },
 };
 
+const CancelAndStopIntentHandler = {
+    canHandle(handlerInput) {
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+            && (Alexa.getIntentName(handlerInput.requestEnvelope) === 'AMAZON.CancelIntent'
+                || Alexa.getIntentName(handlerInput.requestEnvelope) === 'AMAZON.StopIntent');
+    },
+    handle(handlerInput) {
+        const speakOutput = 'Goodbye!';
+        return handlerInput.responseBuilder
+            .speak(speakOutput)
+            .getResponse();
+    }
+};
+
 const ErrorHandler = {
     canHandle() {
         return true;
@@ -132,9 +146,8 @@ const ErrorHandler = {
     }
 };
 
-const HELP_MESSAGE = 'You can say tell me a space fact, or, you can say exit... What can I help you with?';
+const HELP_MESSAGE = 'You can say tell me a fact, or, you can say exit... What can I help you with?';
 const HELP_REPROMPT = 'What can I help you with?';
-const STOP_MESSAGE = 'Goodbye!';
 
 
 exports.handler = Alexa.SkillBuilders.custom()
@@ -143,6 +156,7 @@ exports.handler = Alexa.SkillBuilders.custom()
         HelpIntentHandler,
         GetCrashHandler,
         SessionEndedRequestHandler,
+        CancelAndStopIntentHandler
     )
     .addErrorHandlers(
         ErrorHandler,
